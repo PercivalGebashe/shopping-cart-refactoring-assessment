@@ -8,54 +8,34 @@ import java.util.Map;
 @RequestMapping("/shop")
 public class ShoppingCartController {
     // Store carts in memory (in real app, this would be a database)
-    private Map<String, Map<String, Object>> carts = new HashMap<>();
+    private final Map<String, Cart> carts = new HashMap<>();
+
+
+    // Add item to cart
     @PostMapping("/addItem")
     public String addItem(@RequestParam("cartId") String cartId,
                           @RequestParam("itemName") String itemName,
-                          @RequestParam("price") double price,
+                          @RequestParam("price") BigDecimal price,
                           @RequestParam("quantity") int quantity) {
 
-// Get or create cart
-        Map<String, Object> cart = carts.get(cartId);
-        if (cart == null) {
-            cart = new HashMap<>();
+        // Get or create cart if not exist
+        Cart cart = carts.computeIfAbsent(cartId, Cart::new);
 
-            carts.put(cartId, cart);
-        }
-// Add item to cart
-        String itemKey = itemName + "_" + price;
-        if (cart.containsKey(itemKey)) {
-// Item already exists, update quantity
-            int existingQty = (int) cart.get(itemKey);
-            cart.put(itemKey, existingQty + quantity);
-        } else {
-            cart.put(itemKey, quantity);
-        }
-// Calculate total
-        double total = 0;
-        for (String key : cart.keySet()) {
-            String[] parts = key.split("_");
-            double itemPrice = Double.parseDouble(parts[1]);
-            int itemQty = (int) cart.get(key);
-            total = total + (itemPrice * itemQty);
-        }
-        System.out.println("Cart " + cartId + " total: " + total);
-        return "Item added. Total: " + total;
+        cart.addItem(new Item(itemName, price, quantity));
+
+        return "Item Added. Total: " + cart.calculateTotal();
     }
+
+    // Get cart total
     @GetMapping("/getTotal")
     public String getTotal(@RequestParam("cartId") String cartId) {
-        Map<String, Object> cart = carts.get(cartId);
+        Cart cart = carts.get(cartId);
+
         if (cart == null) {
             return "Cart not found";
         }
-// Calculate total
-        double total = 0;
-        for (String key : cart.keySet()) {
-            String[] parts = key.split("_");
-            double itemPrice = Double.parseDouble(parts[1]);
-            int itemQty = (int) cart.get(key);
-            total = total + (itemPrice * itemQty);
-        }
-        return "Total: " + total;
+
+        // Calculate and return total
+        return "Total: " + cart.calculateTotal();
     }
 }
